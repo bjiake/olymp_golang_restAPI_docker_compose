@@ -9,7 +9,6 @@ import (
 	"log"
 	"net/http"
 	"regexp"
-	"strconv"
 	"strings"
 )
 
@@ -26,7 +25,7 @@ func NewRequestAPI(currentPage int, data []account.Account, prevPage string, nex
 }
 
 func GetAccountByID(context *gin.Context) {
-	loginIdInt, err := getIntParam(context.Query("id"))
+	loginIdInt, err := config.GetIntParam(context.Cookie("id"))
 	if err != nil {
 		context.IndentedJSON(401, gin.H{"error": err.Error()})
 		log.Println(err)
@@ -35,12 +34,12 @@ func GetAccountByID(context *gin.Context) {
 
 	result, err := requestsToMongoDB.GetAccountByID(loginIdInt)
 	if err != nil {
-		context.IndentedJSON(404, gin.H{"error": err.Error()})
-		log.Println(err)
+		context.IndentedJSON(401, gin.H{"error": "this account does not exist"})
+		log.Println("this account does not exist")
 		return
 	}
 
-	idInt, err := getIntParam(context.Param("accountId"))
+	idInt, err := config.GetIntParam(context.Param("accountId"), nil)
 	if err != nil {
 		context.IndentedJSON(400, gin.H{"error": err.Error()})
 		log.Println(err)
@@ -74,8 +73,8 @@ func Login(c *gin.Context) {
 }
 
 func Registration(c *gin.Context) {
-	id := c.Query("id")
-	if id != "" {
+	_, err := config.GetIntParam(c.Cookie("id"))
+	if err == nil {
 		log.Println("Already registered")
 		c.IndentedJSON(403, gin.H{"id": "already_registered"})
 		return
@@ -94,7 +93,7 @@ func Registration(c *gin.Context) {
 	}
 	var newAccount account.Account
 
-	lastID, err := requestsToMongoDB.GetLastIDAccount()
+	lastID, err := requestsToMongoDB.GetLastIDByCollection(config.CollectionAccount)
 	if err != nil {
 		log.Println(err)
 		c.IndentedJSON(500, gin.H{"error": "internal server error cannot get last id"})
@@ -109,14 +108,14 @@ func Registration(c *gin.Context) {
 
 	err = requestsToMongoDB.AddAccount(newAccount)
 	if err != nil {
-		log.Println(err)
-		return
-	}
-	if err != nil {
-		if errors.Is(err, errors.New("email already exists")) {
+		if !errors.Is(err, errors.New("email already exists")) {
 			c.IndentedJSON(409, "Email already exists")
+			log.Println(err)
+			return
 		} else {
 			c.IndentedJSON(500, gin.H{"error": err.Error()})
+			log.Println(err)
+			return
 		}
 	}
 
@@ -149,51 +148,70 @@ func isValidEmail(email string) bool {
 	return match
 }
 
-func getIntParam(value string) (int64, error) {
-	loginId := value
-	if loginId == "" {
-		log.Println("Need to login to account api")
-		return -1, errors.New("need to login to account api")
-	}
-
-	loginIdInt, err := strconv.ParseInt(loginId, 10, 64)
-	if err != nil || loginIdInt <= 0 {
-		log.Println(err)
-		return -1, errors.New("invalid id value")
-	}
-	return loginIdInt, nil
-}
-
 // Поделать put
 func PutAccountByID(context *gin.Context) {
-	loginId, err := getIntParam(context.Query("id"))
+	loginId, err := config.GetIntParam(context.Cookie("id"))
 	if err != nil {
 		context.IndentedJSON(401, gin.H{"error": err.Error()})
 		log.Println(err)
 		return
 	}
-	id, err := getIntParam(context.Param("accountId"))
+	_, err = requestsToMongoDB.GetAccountByID(loginId)
+	if err != nil {
+		context.IndentedJSON(401, gin.H{"error": "this account does not exist"})
+		log.Println("this account does not exist")
+		return
+	}
+	id, err := config.GetIntParam(context.Param("accountId"), nil)
 	if err != nil {
 		context.IndentedJSON(400, gin.H{"error": err.Error()})
 		log.Println(err)
 		return
 	}
 	if loginId != id {
-		context.IndentedJSON(403, gin.H{"error": "Try to delete not your account"})
+		context.IndentedJSON(403, gin.H{"error": "Try to update not your account"})
 		log.Println(err)
 		return
 	}
+	var updatedDoc account.AccountRegistration
+	err = context.BindJSON(&updatedDoc)
+	if err != nil {
+		context.IndentedJSON(401, gin.H{"error": "Invalid request"})
+		log.Println(err)
+		return
+	}
+	if !isValidAccountRegister(updatedDoc) {
+		context.IndentedJSON(400, gin.H{"error": "Invalid data"})
+		log.Println("invalid data")
+		return
+	}
 
+	err = requestsToMongoDB.PutAccount(id, updatedDoc)
+	if err != nil {
+		if err.Error() == "emailAlreadyExist" {
+			context.IndentedJSON(409, gin.H{"error": err.Error()})
+		} else {
+			context.IndentedJSON(404, gin.H{"error": err.Error()})
+		}
+	}
+
+	context.IndentedJSON(200, updatedDoc)
 }
 
 func DeleteAccountByID(context *gin.Context) {
-	loginIdInt, err := getIntParam(context.Query("id"))
+	loginIdInt, err := config.GetIntParam(context.Cookie("id"))
 	if err != nil {
 		context.IndentedJSON(401, gin.H{"error": err.Error()})
 		log.Println(err)
 		return
 	}
-	idInt, err := getIntParam(context.Param("accountId"))
+	_, err = requestsToMongoDB.GetAccountByID(loginIdInt)
+	if err != nil {
+		context.IndentedJSON(401, gin.H{"error": "this account does not exist"})
+		log.Println("this account does not exist")
+		return
+	}
+	idInt, err := config.GetIntParam(context.Param("accountId"), nil)
 	if err != nil {
 		context.IndentedJSON(400, gin.H{"error": err.Error()})
 		log.Println(err)
@@ -204,6 +222,6 @@ func DeleteAccountByID(context *gin.Context) {
 		log.Println(err)
 		return
 	}
-	requestsToMongoDB.DeleteByID(loginIdInt, config.CollectionAccount)
+	requestsToMongoDB.DeleteByIDAndCollection(loginIdInt, config.CollectionAccount)
 	context.IndentedJSON(200, gin.H{"message": "User deleted"})
 }

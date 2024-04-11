@@ -1,4 +1,4 @@
-package regionTypeAPI
+package weatherAPI
 
 import (
 	"github.com/gin-gonic/gin"
@@ -8,8 +8,7 @@ import (
 	"net/http"
 )
 
-// GetRegionTypeByID invalid acc to add
-func GetRegionTypeByID(context *gin.Context) {
+func GetWeatherById(context *gin.Context) {
 	loginIdInt, err := config.GetIntParam(context.Cookie("id"))
 	if err != nil {
 		context.IndentedJSON(401, gin.H{"error": "invalid login"})
@@ -23,14 +22,14 @@ func GetRegionTypeByID(context *gin.Context) {
 		return
 	}
 
-	idRegion, err := config.GetIntParam(context.Param("typeId"), nil)
+	idRegion, err := config.GetIntParam(context.Param("regionId"), nil)
 	if err != nil {
 		context.IndentedJSON(400, gin.H{"error": err.Error()})
 		log.Println(err)
 		return
 	}
 
-	result, err := requestsToMongoDB.GetRegionTypeByID(idRegion)
+	result, err := requestsToMongoDB.GetWeatherByID(idRegion)
 	if err != nil {
 		context.IndentedJSON(404, gin.H{"error": err.Error()})
 		log.Println(err)

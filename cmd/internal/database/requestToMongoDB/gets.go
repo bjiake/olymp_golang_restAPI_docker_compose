@@ -13,10 +13,11 @@ import (
 	"log"
 )
 
-func GetRegionByID(id int64) region.Region {
+func GetRegionByID(id int64) (region.Region, error) {
 	collection, err := getCollection(config.CollectionRegions)
 	if err != nil {
 		log.Println(err)
+		return region.Region{}, err
 	}
 
 	var result region.Region
@@ -25,10 +26,11 @@ func GetRegionByID(id int64) region.Region {
 	err = collection.FindOne(context.TODO(), filter).Decode(&result)
 	if err != nil {
 		log.Println(err)
+		return region.Region{}, err
 	}
 
-	log.Printf("Found a single document: %+v\n", result)
-	return result
+	log.Printf("Found a single Region document: %+v\n", result)
+	return result, nil
 }
 
 func GetRegionTypeByID(id int64) (regionType.RegionType, error) {
@@ -51,10 +53,11 @@ func GetRegionTypeByID(id int64) (regionType.RegionType, error) {
 	return result, nil
 }
 
-func GetWeatherByID(id int64) weather.Weather {
+func GetWeatherByID(id int64) (weather.Weather, error) {
 	collection, err := getCollection(config.CollectionWeather)
 	if err != nil {
 		log.Println(err)
+		return weather.Weather{}, err
 	}
 
 	var result weather.Weather
@@ -63,10 +66,11 @@ func GetWeatherByID(id int64) weather.Weather {
 	err = collection.FindOne(context.TODO(), filter).Decode(&result)
 	if err != nil {
 		log.Println(err)
+		return weather.Weather{}, err
 	}
 
 	log.Printf("Found a single document: %+v\n", result)
-	return result
+	return result, nil
 }
 
 func GetWeatherForecastByID(id int64) (weatherForecast.WeatherForecast, error) {
@@ -78,7 +82,7 @@ func GetWeatherForecastByID(id int64) (weatherForecast.WeatherForecast, error) {
 
 	var result weatherForecast.WeatherForecast
 
-	filter := bson.D{{"_id", id}}
+	filter := bson.D{{"regionId", id}}
 	err = collection.FindOne(context.TODO(), filter).Decode(&result)
 	if err != nil {
 		log.Println(err)
@@ -114,13 +118,13 @@ func GetAccountByID(id int64) (account.AccountInfo, error) {
 	return result, nil
 }
 
-func GetLastIDAccount() (int64, error) {
-	collection, err := getCollection(config.CollectionAccount)
+func GetLastIDByCollection(collectionName string) (int64, error) {
+	collection, err := getCollection(collectionName)
 	if err != nil {
 		return 0, err
 	}
 
-	var result account.Account
+	var result bson.M
 
 	filter := bson.D{{}}
 	options := options.FindOne().SetSort(bson.D{{"_id", -1}})
@@ -129,8 +133,8 @@ func GetLastIDAccount() (int64, error) {
 		return 0, err
 	}
 
-	log.Printf("Found last document account: %+v\n", result)
-	return result.ID, nil
+	log.Printf("Found last document account ID: %d\n", result["_id"])
+	return result["_id"].(int64), nil
 }
 
 func CheckExistAccount(current account.AccountLogin) (account.Account, error) {

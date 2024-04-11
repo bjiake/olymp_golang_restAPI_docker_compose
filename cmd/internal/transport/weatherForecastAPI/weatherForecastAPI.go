@@ -2,23 +2,35 @@ package weatherforecast
 
 import (
 	"github.com/gin-gonic/gin"
+	"go_project/cmd/internal/config"
 	requestsToMongoDB "go_project/cmd/internal/database/requestToMongoDB"
 	"go_project/cmd/internal/models/weatherForecast"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 )
 
 func GetWeatherForecastByID(context *gin.Context) {
-	id := context.Param("forecastId")
-	idInt, err := strconv.ParseInt(id, 10, 64)
-	if err != nil || idInt <= 0 {
-		context.IndentedJSON(http.StatusBadRequest, gin.H{"error": "invalid id value"})
+	loginIdInt, err := config.GetIntParam(context.Cookie("id"))
+	if err != nil {
+		context.IndentedJSON(401, gin.H{"error": "invalid login"})
 		log.Println(err)
 		return
 	}
-	result, err := requestsToMongoDB.GetWeatherForecastByID(idInt)
+	_, err = requestsToMongoDB.GetAccountByID(loginIdInt)
+	if err != nil {
+		context.IndentedJSON(401, gin.H{"error": "this account does not exist"})
+		log.Println("this account does not exist")
+		return
+	}
+
+	regionId, err := config.GetIntParam(context.Param("forecastId"), nil)
+	if err != nil {
+		context.IndentedJSON(400, gin.H{"error": err.Error()})
+		log.Println(err)
+		return
+	}
+	result, err := requestsToMongoDB.GetWeatherForecastByID(regionId)
 	if err != nil {
 		context.IndentedJSON(http.StatusNotFound, gin.H{"error": err.Error()})
 		log.Println(err)
