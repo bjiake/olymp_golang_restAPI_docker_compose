@@ -159,7 +159,6 @@ func isValidEmail(email string) bool {
 	return match
 }
 
-// Поделать put
 func PutAccountByID(context *gin.Context) {
 	loginId, err := config.GetIntParam(context.Cookie("id"))
 	if err != nil {

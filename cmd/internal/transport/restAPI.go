@@ -38,8 +38,6 @@ func Transport() {
 	router.POST("/region/weather", weatherAPI.PostWeather)
 	router.PUT("/region/weather/:regionId", weatherAPI.PutWeather)
 	router.DELETE("/region/:regionId/weather/:weatherId", weatherAPI.DeleteWeatherByID)
-
-	//тестировать
 	router.GET("/region/weather/search", weatherAPI.SearchWeather)
 
 	//WeatherForecast
