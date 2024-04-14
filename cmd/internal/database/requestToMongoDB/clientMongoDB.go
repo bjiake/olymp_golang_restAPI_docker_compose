@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	dbName   = "if_else_olymp"
+	dbName   = "test"
 	mongoURI = "mongodb://localhost:27017/?authSource=admin"
 )
 

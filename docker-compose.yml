@@ -1,0 +1,17 @@
+version: "3.1"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: ./compose/Dockerfile
+    depends_on:
+      - bd
+
+  bd:
+    image: mongo
+    entrypoint: ./compose/mongo/start_bd
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: my_password

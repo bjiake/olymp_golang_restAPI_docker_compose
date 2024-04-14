@@ -1,0 +1,6 @@
+#!/bin/bash
+load("db_account.js")
+load("db_region.js")
+load("db_region_type.js")
+load("db_weather.js")
+load("db_weather_forecast.js")
