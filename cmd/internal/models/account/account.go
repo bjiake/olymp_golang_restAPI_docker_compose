@@ -25,3 +25,11 @@ type AccountRegistration struct {
 	Email     string `json:"email" validate:"required" bson:"email"`
 	Password  string `json:"password" validate:"required" bson:"password"`
 }
+
+type Search struct {
+	FirstName string `json:"firstName" bson:"firstName"`
+	LastName  string `json:"lastName" bson:"lastName"`
+	Email     string `json:"email" bson:"email"`
+	Form      int64  `json:"form"`
+	Size      int64  `json:"size"`
+}

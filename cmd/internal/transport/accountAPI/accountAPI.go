@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 	"strings"
 )
 
@@ -56,23 +57,28 @@ func GetAccountByID(context *gin.Context) {
 	return
 }
 
+// Login Handler
 func Login(c *gin.Context) {
+	//request account
 	var inputUser account.AccountLogin
 	if err := c.BindJSON(&inputUser); err != nil {
 		c.IndentedJSON(401, gin.H{"error": "Invalid request"})
 		return
 	}
 
+	//Check loginId
 	result, err := requestsToMongoDB.CheckExistAccount(inputUser)
 	if err != nil {
 		c.IndentedJSON(401, gin.H{"error": "Invalid login data"})
 		return
 	}
 
-	c.IndentedJSON(200, result.ID)
+	c.IndentedJSON(200, gin.H{"id": result.ID})
 }
 
+// Registration Handler
 func Registration(c *gin.Context) {
+	//Check login
 	_, err := config.GetIntParam(c.Cookie("id"))
 	if err == nil {
 		log.Println("Already registered")
@@ -80,19 +86,22 @@ func Registration(c *gin.Context) {
 		return
 	}
 
+	//handle request
 	var newAccountRegistration account.AccountRegistration
 	if err := c.BindJSON(&newAccountRegistration); err != nil {
 		c.JSON(400, gin.H{"error": "Invalid request"})
 		log.Println("invalid request")
 		return
 	}
+
+	//check valid data
 	if !isValidAccountRegister(newAccountRegistration) {
 		c.IndentedJSON(400, gin.H{"error": "Invalid data"})
 		log.Println("invalid data")
 		return
 	}
-	var newAccount account.Account
 
+	var newAccount account.Account
 	lastID, err := requestsToMongoDB.GetLastIDByCollection(config.CollectionAccount)
 	if err != nil {
 		log.Println(err)
@@ -119,7 +128,9 @@ func Registration(c *gin.Context) {
 		}
 	}
 
-	c.JSON(201, gin.H{"message": "User created"})
+	infoAccount, _ := requestsToMongoDB.GetAccountByID(newAccount.ID)
+
+	c.JSON(201, infoAccount)
 	log.Printf("User created: %+v\n", newAccount)
 }
 
@@ -176,7 +187,7 @@ func PutAccountByID(context *gin.Context) {
 	var updatedDoc account.AccountRegistration
 	err = context.BindJSON(&updatedDoc)
 	if err != nil {
-		context.IndentedJSON(401, gin.H{"error": "Invalid request"})
+		context.IndentedJSON(400, gin.H{"error": "Invalid request"})
 		log.Println(err)
 		return
 	}
@@ -222,6 +233,49 @@ func DeleteAccountByID(context *gin.Context) {
 		log.Println(err)
 		return
 	}
-	requestsToMongoDB.DeleteByIDAndCollection(loginIdInt, config.CollectionAccount)
-	context.IndentedJSON(200, gin.H{"message": "User deleted"})
+	err = requestsToMongoDB.DeleteByIDAndCollection(loginIdInt, config.CollectionAccount)
+	if err != nil {
+		context.IndentedJSON(404, gin.H{"message": err.Error()})
+		log.Println(err)
+		return
+	}
+	context.IndentedJSON(200, gin.H{})
+	log.Println("user deleted")
+	return
+}
+
+func SearchAccount(c *gin.Context) {
+	var accountSearch account.Search
+	accountSearch.FirstName = c.Query("firstName")
+	accountSearch.LastName = c.Query("lastName")
+	accountSearch.Email = c.Query("email")
+	formString := c.Query("form")
+	if formString == "" {
+		log.Println("invalid form")
+		c.IndentedJSON(400, gin.H{"error": "invalid form"})
+		return
+	}
+
+	formInt, err := strconv.ParseInt(formString, 10, 64)
+	if err != nil || formInt < 0 {
+		log.Println(err)
+		c.IndentedJSON(400, gin.H{"error": "invalid form"})
+		return
+	}
+	accountSearch.Form = formInt
+	sizeInt, err := config.GetIntParam(c.Query("size"), nil)
+	if err != nil {
+		log.Println(err)
+		c.IndentedJSON(400, gin.H{"error": "size must be greater than zero"})
+		return
+	}
+	accountSearch.Size = sizeInt
+
+	accountsInfo, err := requestsToMongoDB.GetSearchAccount(accountSearch)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, accountsInfo)
 }

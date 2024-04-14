@@ -7,6 +7,7 @@ import (
 	"go_project/cmd/internal/models/region"
 	"log"
 	"net/http"
+	"strings"
 )
 
 func GetRegionByID(context *gin.Context) {
@@ -125,7 +126,7 @@ func PutRegionByID(context *gin.Context) {
 
 	err = context.BindJSON(&updatedDoc)
 	if err != nil {
-		context.IndentedJSON(401, gin.H{"error": "Invalid request"})
+		context.IndentedJSON(400, gin.H{"error": "Invalid request"})
 		log.Println(err)
 		return
 	}
@@ -143,13 +144,14 @@ func PutRegionByID(context *gin.Context) {
 			context.IndentedJSON(404, gin.H{"error": err.Error()})
 		}
 	}
+	infoRegion, _ := requestsToMongoDB.GetRegionByID(id)
 
-	context.IndentedJSON(200, updatedDoc)
+	context.IndentedJSON(200, infoRegion)
 }
 
 func isValidData(newRegion region.NewRegion) bool {
 	// 0 т.к в golang Нету nil Для float64
-	if newRegion.Latitude == 0 || newRegion.Longitude == 0 || newRegion.Name == "" {
+	if newRegion.Latitude == 0 || newRegion.Longitude == 0 || newRegion.Name == "" || strings.TrimSpace(newRegion.Name) == "" {
 		return false
 	}
 	return true
@@ -185,6 +187,6 @@ func DeleteRegionByID(context *gin.Context) {
 		log.Println("This region is parent region for someone")
 		return
 	}
-	context.IndentedJSON(200, gin.H{"message": "Region deleted"})
+	context.IndentedJSON(200, gin.H{})
 	log.Println("Region deleted")
 }
