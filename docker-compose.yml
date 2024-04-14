@@ -1,17 +1,24 @@
 version: "3.1"
+networks:
+  proxynet:
+    driver: bridge
 
 services:
+
+  bd:
+    build:
+      context: .
+      dockerfile: compose/Dockerfile
+    networks:
+      - proxynet
+
   backend:
     build:
       context: .
-      dockerfile: ./compose/Dockerfile
-    depends_on:
-      - bd
+      dockerfile: cmd/Dockerfile
+    ports:
+      - "8088:8088"
+    networks:
+      - proxynet
 
-  bd:
-    image: mongo
-    entrypoint: ./compose/mongo/start_bd
-    restart: always
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: my_password
+

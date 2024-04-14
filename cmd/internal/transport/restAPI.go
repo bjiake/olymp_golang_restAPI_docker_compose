@@ -48,7 +48,7 @@ func Transport() {
 	router.POST("/region/weather/forecast", weatherForecastAPI.PostWeatherByID)
 	router.DELETE("/region/weather/forecast/:forecastId", weatherForecastAPI.DeleteRegionTypeByID)
 
-	err := router.Run(":8088")
+	err := router.Run("localhost:8088")
 	if err != nil {
 		log.Fatal(err)
 		return
