@@ -11,6 +11,8 @@ services:
       dockerfile: compose/Dockerfile
     networks:
       - proxynet
+    ports:
+      - "27:27017"
 
   backend:
     build:
@@ -20,5 +22,7 @@ services:
       - "8088:8088"
     networks:
       - proxynet
+    depends_on:
+      - bd
 
 

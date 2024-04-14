@@ -10,7 +10,7 @@ import (
 
 const (
 	dbName   = "test"
-	mongoURI = "mongodb://localhost:27017/?authSource=admin"
+	mongoURI = "mongodb://mongo_root:mongo_root@bd:27017/?authSource=admin"
 )
 
 var (
@@ -34,19 +34,19 @@ func getClient() (*mongo.Client, error) {
 		//client, err = mongo.NewClient(clientOpts)
 		client, err = mongo.NewClient(options.Client().ApplyURI(mongoURI))
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 
 		// Create connect
 		err = client.Connect(context.TODO())
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 
 		// Check the connection
 		err = client.Ping(context.TODO(), nil)
 		if err != nil {
-			log.Fatal(err)
+			log.Println(err)
 		}
 
 		log.Println("Connected to MongoDB")
@@ -70,6 +70,7 @@ func CloseConnection() {
 func getCollection(collectionName string) (*mongo.Collection, error) {
 	client, err := getClient()
 	if err != nil {
+		log.Println(err)
 		return nil, err
 	}
 	collection := client.Database(dbName).Collection(collectionName)
